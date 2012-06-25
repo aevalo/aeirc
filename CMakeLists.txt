@@ -20,6 +20,7 @@ if(Boost_FOUND AND OPENSSL_FOUND)
     endif(WIN32)
     
     add_subdirectory(src/libaeirc)
+    add_subdirectory(src/aeirc-gui)
     
     if(WIN32 AND NOT UNIX)
       install(CODE "file(MAKE_DIRECTORY \"${CMAKE_INSTALL_PREFIX}/logs/\")")
