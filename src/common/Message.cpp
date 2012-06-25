@@ -1,4 +1,5 @@
 #include <boost/regex.hpp>
+#include "Message.hpp"
 
 namespace aeirc
 {
@@ -9,10 +10,6 @@ namespace aeirc
       bool ret = false;
       try
       {
-        std::string s("Parsing prefix: ");
-        s += str;
-        AEIRCD_LOG_DEBUG(s);
-        
         boost::match_results<std::string::const_iterator> what;
         boost::regex expression("(!(\\w+))?(@(\\w+))?", boost::regex::perl);
         std::string::const_iterator start = str.begin(), end = str.end(); 
