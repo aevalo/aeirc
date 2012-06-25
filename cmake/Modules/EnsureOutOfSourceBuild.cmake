@@ -1,0 +1,6 @@
+macro(EnsureOutOfSourceBuild errorMsg)
+    if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+        message(SEND_ERROR "${errorMsg}")
+        message(FATAL_ERROR "Remove the file CMakeCache.txt in ${CMAKE_SOURCE_DIR} first.")
+    endif(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+endmacro(EnsureOutOfSourceBuild)
