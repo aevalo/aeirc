@@ -19,10 +19,8 @@ if(Boost_FOUND AND OPENSSL_FOUND)
         add_definitions(-D_WIN32_WINNT=0x0501 -D_CRT_SECURE_NO_WARNINGS -D_ATL_SECURE_NO_WARNINGS -D_AFX_SECURE_NO_WARNINGS)
     endif(WIN32)
     
-    install(TARGETS aeircd ssl_server ssl_client chat_server chat_client
-            RUNTIME DESTINATION bin
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib/static)
+    add_subdirectory(src/libaeirc)
+    
     if(WIN32 AND NOT UNIX)
       install(CODE "file(MAKE_DIRECTORY \"${CMAKE_INSTALL_PREFIX}/logs/\")")
       install(CODE "file(MAKE_DIRECTORY \"${CMAKE_INSTALL_PREFIX}/config/\")")
