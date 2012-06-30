@@ -1,1 +1,106 @@
-#include <windows.h>#define VER_FILEVERSION             ${VER_FILEVERSION}#define VER_FILEVERSION_STR         "${VER_FILEVERSION_STR}"#define VER_PRODUCTVERSION          ${VER_PRODUCTVERSION}#define VER_PRODUCTVERSION_STR      "${VER_PRODUCTVERSION_STR}"#ifndef DEBUG#define VER_DEBUG                   0#else#define VER_DEBUG                   VS_FF_DEBUG#endifVS_VERSION_INFO VERSIONINFOFILEVERSION    	VER_FILEVERSIONPRODUCTVERSION 	VER_PRODUCTVERSIONFILEFLAGSMASK  	VS_FFI_FILEFLAGSMASKFILEFLAGS      	(VER_PRIVATEBUILD|VER_PRERELEASE|VER_DEBUG)FILEOS         	VOS__WINDOWS32FILETYPE       	VFT_DLLFILESUBTYPE    	VFT2_UNKNOWNBEGIN    BLOCK "StringFileInfo"    BEGIN        BLOCK "040904E4"        BEGIN            VALUE "CompanyName",      VER_COMPANYNAME_STR            VALUE "FileDescription",  VER_FILEDESCRIPTION_STR            VALUE "FileVersion",      VER_FILEVERSION_STR            VALUE "InternalName",     VER_INTERNALNAME_STR            VALUE "LegalCopyright",   VER_LEGALCOPYRIGHT_STR            VALUE "LegalTrademarks1", VER_LEGALTRADEMARKS1_STR            VALUE "LegalTrademarks2", VER_LEGALTRADEMARKS2_STR            VALUE "OriginalFilename", VER_ORIGINALFILENAME_STR            VALUE "ProductName",      VER_PRODUCTNAME_STR            VALUE "ProductVersion",   VER_PRODUCTVERSION_STR        END    END    BLOCK "VarFileInfo"    BEGIN        /* The following line should only be modified for localized versions.     */        /* It consists of any number of WORD,WORD pairs, with each pair           */        /* describing a language,codepage combination supported by the file.      */        /*                                                                        */        /* For example, a file might have values "0x409,1252" indicating that it  */        /* supports English language (0x409) in the Windows ANSI codepage (1252). */        VALUE "Translation", 0x409, 1252    ENDEND
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winver.h>
+
+#define LIBAEIRC_VERSION_MAJOR   ${LIBAEIRC_VERSION_MAJOR}
+#define LIBAEIRC_VERSION_MINOR   ${LIBAEIRC_VERSION_MINOR}
+#define LIBAEIRC_VERSION_BUILD   ${LIBAEIRC_VERSION_BUILD}
+
+#define VERSION_RES_STRING_D    "1.00 (Debug)\0"
+#define VERSION_RES_STRING      "1.00\0"
+
+#define VERSION_RES_BIN_NAME        "libaeirc.dll\0"
+#define VERSION_RES_BIN_DESCRIPTION "aeirc common library\0"
+#define VERSION_RES_COMMENT       "\0"
+#define VERSION_RES_PRODUCT_NAME  "\0"
+#define VERSION_RES_COMPANY_NAME  "\0"
+#define VERSION_RES_COPYRIGHT     "\0"
+
+//
+// Version flags.
+//
+// OFFICIAL and FINAL should be defined when appropriate.
+//
+
+#ifndef OFFICIAL
+#define VER_PRIVATEBUILD      VS_FF_PRIVATEBUILD
+#else
+#define VER_PRIVATEBUILD      0
+#endif
+
+#ifndef FINAL
+#define VER_PRERELEASE        VS_FF_PRERELEASE
+#else
+#define VER_PRERELEASE        0
+#endif
+
+#ifdef DEBUG
+#define VER_DEBUG             VS_FF_DEBUG
+#else
+#define VER_DEBUG             0
+#endif
+
+//
+// Version definitions
+//
+
+#define VERSION_RES_FLAGSMASK   0x0030003FL
+#define VERSION_RES_FLAGS       (VER_PRIVATEBUILD|VER_PRERELEASE|VER_DEBUG)
+
+#ifndef VERSION_RES_OS
+#define VERSION_RES_OS          VOS__WINDOWS32
+#endif
+
+#ifndef VERSION_RES_TYPE
+#define VERSION_RES_TYPE        VFT_DLL
+#endif
+
+#ifndef VERSION_RES_SUBTYPE
+#define VERSION_RES_SUBTYPE     VFT2_UNKNOWN
+#endif
+
+#define VERSION_RES_LANGUAGE    0x409
+
+#ifdef UNICODE
+#define VERSION_RES_CHARSET     1200
+#else
+#define VERSION_RES_CHARSET     1252
+#endif
+
+//
+// Version resource
+//
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     LIBAEIRC_VERSION_MAJOR, LIBAEIRC_VERSION_MINOR, 0, LIBAEIRC_VERSION_BUILD
+PRODUCTVERSION  LIBAEIRC_VERSION_MAJOR, LIBAEIRC_VERSION_MINOR, 0, LIBAEIRC_VERSION_BUILD
+FILEFLAGSMASK   VERSION_RES_FLAGSMASK
+FILEFLAGS       VERSION_RES_FLAGS
+FILEOS          VERSION_RES_OS
+FILETYPE        VERSION_RES_TYPE
+FILESUBTYPE     VERSION_RES_SUBTYPE
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName",        VERSION_RES_COMPANY_NAME
+      VALUE "Comment",            VERSION_RES_COMMENT
+      VALUE "FileDescription",    VERSION_RES_BIN_DESCRIPTION
+      VALUE "FileVersion",        VERSION_RES_STRING
+      VALUE "InternalName",       VERSION_RES_BIN_NAME
+      VALUE "LegalCopyright",     VERSION_RES_COPYRIGHT
+      VALUE "OriginalFilename",   VERSION_RES_BIN_NAME
+      VALUE "ProductName",        VERSION_RES_PRODUCT_NAME
+#ifdef DEBUG
+      VALUE "ProductVersion",     VERSION_RES_STRING_D
+#else
+      VALUE "ProductVersion",     VERSION_RES_STRING
+#endif
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", VERSION_RES_LANGUAGE, VERSION_RES_CHARSET
+  END
+END
