@@ -1,175 +1,234 @@
-// psax.c; illustration of curses library
+/*
+ * $Id: tuidemo.c,v 1.22 2008/07/14 12:35:23 wmcbrine Exp $
+ *
+ * Author : P.J. Kunst <kunst@prl.philips.nl>
+ * Date   : 25-02-93
+ *
+ * Purpose: This program demonstrates the use of the 'curses' library
+ *          for the creation of (simple) menu-operated programs.
+ *          In the PDCurses version, use is made of colors for the
+ *          highlighting of subwindows (title bar, status bar etc).
+ *
+ * Acknowledgement: some ideas were borrowed from Mark Hessling's
+ *                  version of the 'testcurs' program.
+ */
 
-// runs the shell command ’ps ax’ and dislays the last lines of its output,
-// as many as the window will fit; allows the user to move up and down
-// within the window, with the option to kill whichever process is
-// currently highlighted
-
-// usage: psax
-
-// user commands:
-
-// ’u’: move highlight up a line
-// ’d’: move highlight down a line
-// ’k’: kill process in currently highlighted line
-// ’r’: re-run ’ps ax’ for update
-// ’q’: quit
-
-// possible extensions: allowing scrolling, so that the user could go
-// through all the ’ps ax’ output, not just the last lines; allow
-// wraparound for long lines; ask user to confirm before killing a
-// process
-
-#define MAXROW 1000
-#define MAXCOL 500
-
-#include <curses.h> // required
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <locale.h>
+#include "tui.hpp"
 
-WINDOW *scrn;                     // will point to curses window object
 
-char cmdoutlines[MAXROW][MAXCOL]; // output of ’ps ax’ (better to use malloc())
-int ncmdlines,                    // number of rows in cmdoutlines
-    nwinlines,                    // number of rows our "ps ax" output occupies in the xterm (or equiv.) window
-    winrow,                       // current row position in screen
-    cmdstartrow,                  // index of first row in cmdoutlines to be displayed
-    cmdlastrow;                   // index of last row in cmdoutlines to be displayed
+/* change this if source at other location */
 
-// rewrites the line at winrow in bold font
-void highlight()
+#ifdef XCURSES
+# define FNAME  "../demos/tui.c"
+#else
+# define FNAME  "..\\demos\\tui.c"
+#endif
+
+/**************************** strings entry box ***************************/
+
+void address(void)
 {
-  int clinenum;
-  attron(A_BOLD);                 // this curses library call says that whatever we
-  // write from now on (until we say otherwise)
-  // will be in bold font
-  // we’ll need to rewrite the cmdoutlines line currently displayed
-  // at line winrow in the screen, so as to get the bold font
-  clinenum = cmdstartrow + winrow;
-  mvaddstr(winrow, 0, cmdoutlines[clinenum]);
-  attroff(A_BOLD);                // OK, leave bold mode
-  refresh();                      // make the change appear on the screen
-}
-
-// runs "ps ax" and stores the output in cmdoutlines
-void runpsax()
-{
-  FILE *p;
-  char ln[MAXCOL];
-  int row;
-  char* tmp;
-  
-  p = _popen("dir /b","r");      // open Unix pipe (enables one program to read output of another as if it were a file)
-  for (row = 0; row < MAXROW; row++)
-  {
-    tmp = fgets(ln, MAXCOL, p); // read one line from the pipe
-    if (tmp == NULL)
+    char *fieldname[6] =
     {
-      break;                    // if end of pipe, break
+        "Name", "Street", "City", "State", "Country", (char *)0
+    };
+
+    char *fieldbuf[5];
+    WINDOW *wbody = bodywin();
+    int i, field = 50;
+
+    for (i = 0; i < 5; i++)
+        fieldbuf[i] = (char*)calloc(1, field + 1);
+
+    if (getstrings(fieldname, fieldbuf, field) != KEY_ESC)
+    {
+        for (i = 0; fieldname[i]; i++)
+            wprintw(wbody, "%10s : %s\n",
+                fieldname[i], fieldbuf[i]);
+
+        wrefresh(wbody);
     }
-    // don’t want stored line to exceed width of screen, which the
-    // curses library provides to us in the variable COLS, so truncate
-    // to at most COLS characters
-    strncpy(cmdoutlines[row], ln, COLS);
-    // remove EOL character
-    cmdoutlines[row][MAXCOL-1] = 0;
-  }
-  ncmdlines = row;
-  _pclose(p);                     // close pipe
+
+    for (i = 0; i < 5; i++)
+        free(fieldbuf[i]);
 }
 
-// displays last part of command output (as much as fits in screen)
-void showlastpart()
+/**************************** string entry box ****************************/
+
+char *getfname(char *desc, char *fname, int field)
 {
-  int row;
-  clear();                // curses clear-screen call
-  // prepare to paint the (last part of the) ’ps ax’ output on the screen
-  // two cases, depending on whether there is more output than screen rows;
-  // first, the case in which the entire output fits in one screen:
-  if (ncmdlines <= LINES) // LINES is an int maintained by the curses
-  {                       // library, equal to the number of lines in
-    cmdstartrow = 0;      // the screen
-    nwinlines = ncmdlines;
-  }
-  else
-  {                       // now the case in which the output is bigger than one screen
-    cmdstartrow = ncmdlines - LINES;
-    nwinlines = LINES;
-  }
-  cmdlastrow = cmdstartrow + nwinlines - 1;
-  // now paint the rows to the screen
-  for (row = cmdstartrow, winrow = 0; row <= cmdlastrow; row++, winrow++)
-  {
-    mvaddstr(winrow, 0, cmdoutlines[row]);  // curses call to move to the
-  }                                         // specified position and
-                                            // paint a string there
-  refresh();                                // now make the changes actually appear on the screen,
-  // using this call to the curses library
-  // highlight the last line
-  winrow--;
-  highlight();
+    char *fieldname[2];
+    char *fieldbuf[1];
+
+    fieldname[0] = desc;
+    fieldname[1] = 0;
+    fieldbuf[0] = fname;
+
+    return (getstrings(fieldname, fieldbuf, field) == KEY_ESC) ? NULL : fname;
 }
 
-// moves up/down one line
-void updown(int inc)
+/**************************** a very simple file browser ******************/
+
+void showfile(char *fname)
 {
-  int tmp = winrow + inc;
-  // ignore attempts to go off the edge of the screen
-  if (tmp >= 0 && tmp < LINES)
-  {
-    // rewrite the current line before moving; since our current font
-    // is non-BOLD (actually A_NORMAL), the effect is to unhighlight
-    // this line
-    mvaddstr(winrow, 0, cmdoutlines[cmdstartrow+winrow]);
-    // highlight the line we’re moving to
-    winrow = tmp;
-    highlight();
-  }
+    int i, bh = bodylen();
+    FILE *fp;
+    char buf[MAXSTRLEN];
+    bool ateof = FALSE;
+
+    statusmsg("FileBrowser: Hit key to continue, Q to quit");
+
+    if ((fp = fopen(fname, "r")) != NULL)   /* file available? */
+    {
+        while (!ateof)
+        {
+            clsbody();
+
+            for (i = 0; i < bh - 1 && !ateof; i++)
+            {
+                buf[0] = '\0';
+                fgets(buf, MAXSTRLEN, fp);
+
+                if (strlen(buf))
+                    bodymsg(buf);
+                else
+                    ateof = TRUE;
+            }
+
+            switch (waitforkey())
+            {
+            case 'Q':
+            case 'q':
+            case 0x1b:
+                ateof = TRUE;
+            }
+        }
+
+        fclose(fp);
+    }
+    else
+    {
+        sprintf(buf, "ERROR: file '%s' not found", fname);
+        errormsg(buf);
+    }
 }
 
-// run/re-run "ps ax"
-void rerun()
+/***************************** forward declarations ***********************/
+
+void sub0(void), sub1(void), sub2(void), sub3(void);
+void func1(void), func2(void);
+void subfunc1(void), subfunc2(void);
+void subsub(void);
+
+/***************************** menus initialization ***********************/
+
+menu MainMenu[] =
 {
-  runpsax();
-  showlastpart();
+    { "Asub", sub0, "Go inside first submenu" },
+    { "Bsub", sub1, "Go inside second submenu" },
+    { "Csub", sub2, "Go inside third submenu" },
+    { "Dsub", sub3, "Go inside fourth submenu" },
+    { "", (FUNC)0, "" }   /* always add this as the last item! */
+};
+
+menu SubMenu0[] =
+{
+    { "Exit", DoExit, "Terminate program" },
+    { "", (FUNC)0, "" }
+};
+
+menu SubMenu1[] =
+{
+    { "OneBeep", func1, "Sound one beep" },
+    { "TwoBeeps", func2, "Sound two beeps" },
+    { "", (FUNC)0, "" }
+};
+
+menu SubMenu2[] =
+{
+    { "Browse", subfunc1, "Source file lister" },
+    { "Input", subfunc2, "Interactive file lister" },
+    { "Address", address, "Get address data" },
+    { "", (FUNC)0, "" }
+};
+
+menu SubMenu3[] =
+{
+    { "SubSub", subsub, "Go inside sub-submenu" },
+    { "", (FUNC)0, "" }
+};
+
+/***************************** main menu functions ************************/
+
+void sub0(void)
+{
+    domenu(SubMenu0);
 }
 
-// kills the highlighted process
-void prockill()
+void sub1(void)
 {
-  char *pid;
-  // strtok() is from C library; see man page
-  pid = strtok(cmdoutlines[cmdstartrow+winrow]," ");
-  //kill(atoi(pid),9);  // this is a Unix system call to send signal 9,
-                      // the kill signal, to the given process
-  rerun();
+    domenu(SubMenu1);
 }
 
-int main(int argc, char* argv[])
+void sub2(void)
 {
-  char c;
-  // window setup, next 3 lines are curses library calls, a standard
-  // initializing sequence for curses programs
-  scrn = initscr();
-  noecho(); // don’t echo keystrokes
-  cbreak(); // keyboard input valid immediately, not after hit Enter
-  // run ’ps ax’ and process the output
-  runpsax();
-  // display in the window
-  showlastpart();
-  // user command loop
-  while (1)
-  {
-    // get user command
-    c = getch();
-    if (c == 'u') updown(-1);
-    else if (c == 'd') updown(1);
-    else if (c == 'r') rerun();
-    else if (c == 'k') prockill();
-    else break; // quit
-  }
-  // restore original settings and leave
-  endwin();
-  return 0;
+    domenu(SubMenu2);
+}
+
+void sub3(void)
+{
+    domenu(SubMenu3);
+}
+
+/***************************** submenu1 functions *************************/
+
+void func1(void)
+{
+    beep();
+    bodymsg("One beep! ");
+}
+
+void func2(void)
+{
+    beep();
+    bodymsg("Two beeps! ");
+    beep();
+}
+
+/***************************** submenu2 functions *************************/
+
+void subfunc1(void)
+{
+    showfile(FNAME);
+}
+
+void subfunc2(void)
+{
+    char fname[MAXSTRLEN];
+
+    strcpy(fname, FNAME);
+    if (getfname ("File to browse:", fname, 50))
+        showfile(fname);
+}
+
+/***************************** submenu3 functions *************************/
+
+void subsub(void)
+{
+    domenu(SubMenu2);
+}
+
+/***************************** start main menu  ***************************/
+
+int main(int argc, char **argv)
+{
+    setlocale(LC_ALL, "");
+
+    startmenu(MainMenu, "TUI - 'textual user interface' demonstration program");
+
+    return 0;
 }

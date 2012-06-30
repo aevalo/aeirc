@@ -1,6 +1,11 @@
 project(libaeirc CXX)
 cmake_minimum_required(VERSION 2.8)
 
+set(LIBAEIRC_VERSION_MAJOR 0)
+set(LIBAEIRC_VERSION_MINOR 1)
+set(LIBAEIRC_VERSION_PATCH 1)
+set(LIBAEIRC_VERSION "${LIBAEIRC_VERSION_MAJOR}.${LIBAEIRC_VERSION_MINOR}.${LIBAEIRC_VERSION_PATCH}")
+
 find_package(Boost 1.47.0 COMPONENTS system regex thread REQUIRED)
 find_package(OpenSSL REQUIRED)
 
@@ -16,7 +21,7 @@ set(aeirc-common_HEADERS ../common/Message.hpp)
 
 add_library(libaeirc SHARED ${aeirc-common_HEADERS} ${aeirc-common_SOURCES})
 
-set_target_properties(libaeirc PROPERTIES PREFIX "")
+set_target_properties(libaeirc PROPERTIES PREFIX "" VERSION ${LIBAEIRC_VERSION} SOVERSION ${LIBAEIRC_VERSION})
 
 install(TARGETS libaeirc
         RUNTIME DESTINATION bin
