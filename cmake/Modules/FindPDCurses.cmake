@@ -17,6 +17,7 @@ FIND_LIBRARY(PDCURSES_LIBRARY
 
 SET(PDCURSES_FOUND "NO")
 IF(PDCURSES_INCLUDE_DIR AND PDCURSES_LIBRARY)
+  message(STATUS "Found PDCurses library: ${PDCURSES_LIBRARY}")
   # Set the final string here so the GUI reflects the final state.
   SET(PDCURSES_LIBRARY PDCURSES_LIBRARYAPR_LIBRARY} CACHE STRING "Where the APDCurses Library can be found")
 

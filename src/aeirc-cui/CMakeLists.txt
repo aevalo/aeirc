@@ -1,7 +1,15 @@
 project(aeirc-cui CXX)
 cmake_minimum_required(VERSION 2.8)
 
-find_package(PDCurses REQUIRED)
+if(WIN32 AND NOT CYGWIN)
+  find_package(PDCurses REQUIRED)
+else()
+  find_package(Curses REQUIRED)
+endif(WIN32 AND NOT CYGWIN)
+
+if(WIN32)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif(WIN32)
 
 if(PDCURSES_FOUND)
   include_directories(${PDCURSES_INCLUDE_DIR})

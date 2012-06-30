@@ -29,7 +29,7 @@ namespace aeirc
           p.host = std::string(what[4].first, what[4].second);
         }
       }
-      catch (std::exception& e)
+      catch (std::exception& /*e*/)
       {
         return false;
       }

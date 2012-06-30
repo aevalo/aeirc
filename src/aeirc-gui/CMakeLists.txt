@@ -7,6 +7,7 @@ set(QT_USE_QTNETWORK TRUE)
 
 include(${QT_USE_FILE})
 add_definitions(${QT_DEFINITIONS})
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 set(aeirc-gui_SOURCES main.cpp mainwindow.cpp)
