@@ -1,67 +1,72 @@
-/*
- * 'textual user interface'
- *
- * $Id: tui.h,v 1.11 2008/07/14 12:35:23 wmcbrine Exp $
- *
- * Author : P.J. Kunst <kunst@prl.philips.nl>
- * Date   : 25-02-93
- */
+//
+// aeirc CUI library
+//
+// Header file
+//
+// Based in TUI example from PDCurses
+//
 
-#ifndef _TUI_H_
-#define _TUI_H_
+#ifndef AEIRC_TUI_HPP_INCLUDED
+#define AEIRC_TUI_HPP_INCLUDED
 
 #include <curses.h>
 
-#ifdef A_COLOR
-#define A_ATTR  (A_ATTRIBUTES ^ A_COLOR)  /* A_BLINK, A_REVERSE, A_BOLD */
-#else
-#define A_ATTR  (A_ATTRIBUTES)            /* standard UNIX attributes */
-#endif
-
-#define MAXSTRLEN  256
-#define KEY_ESC    0x1b     /* Escape */
-
-typedef void (*FUNC)(void);
-
-typedef struct 
+namespace aeirc
 {
-    char *name; /* item label */
-    FUNC  func; /* (pointer to) function */
-    char *desc; /* function description */
-} menu;
+  namespace tui
+  {
+    #ifdef A_COLOR
+    #define A_ATTR  (A_ATTRIBUTES ^ A_COLOR)  // A_BLINK, A_REVERSE, A_BOLD
+    #else
+    #define A_ATTR  (A_ATTRIBUTES)            // standard UNIX attributes
+    #endif
 
-/* ANSI C function prototypes: */
+    const int MAXSTRLEN = 256;
+    const char KEY_ESC  = 0x1b;     // Escape
 
-void    clsbody(void);
-int     bodylen(void);
-WINDOW *bodywin(void);
+    typedef void (*FUNC)();
 
-void    rmerror(void);
-void    rmstatus(void);
+    typedef struct
+    {
+      char* name; // item label
+      FUNC  func; // (pointer to) function
+      char* desc; // function description
+    } menu;
 
-void    titlemsg(char *msg);
-void    bodymsg(char *msg);
-void    errormsg(char *msg);
-void    statusmsg(char *msg);
+    // ANSI C function prototypes:
+    void    clsbody();
+    int     bodylen();
+    WINDOW* bodywin();
 
-bool    keypressed(void);
-int     getkey(void);
-int     waitforkey(void);
+    void    rmerror();
+    void    rmstatus();
 
-void    DoExit(void);
-void    startmenu(menu *mp, char *title);
-void    domenu(menu *mp);
+    void    titlemsg(char* msg);
+    void    bodymsg(char* msg);
+    void    errormsg(char* msg);
+    void    statusmsg(char* msg);
 
-int     weditstr(WINDOW *win, char *buf, int field);
-WINDOW *winputbox(WINDOW *win, int nlines, int ncols);
-int     getstrings(char *desc[], char *buf[], int field);
+    bool    keypressed();
+    int     getkey();
+    int     waitforkey();
 
-#define editstr(s,f)           (weditstr(stdscr,s,f))
-#define mveditstr(y,x,s,f)     (move(y,x)==ERR?ERR:editstr(s,f))
-#define mvweditstr(w,y,x,s,f)  (wmove(w,y,x)==ERR?ERR:weditstr(w,s,f))
+    void    DoExit();
+    void    startmenu(menu* mp, char* title);
+    void    domenu(menu* mp);
 
-#define inputbox(l,c)          (winputbox(stdscr,l,c))
-#define mvinputbox(y,x,l,c)    (move(y,x)==ERR?w:inputbox(l,c))
-#define mvwinputbox(w,y,x,l,c) (wmove(w,y,x)==ERR?w:winputbox(w,l,c))
+    int     weditstr(WINDOW* win, char* buf, int field);
+    WINDOW* winputbox(WINDOW* win, int nlines, int ncols);
+    int     getstrings(char* desc[], char* buf[], int field);
 
-#endif
+    // Check the functions below, wether they are usefull
+    inline int editstr(char* s, int f) {return weditstr(stdscr,s,f);}
+    inline int mveditstr(int y, int x, char* s, int f)     {return (move(y,x)==ERR?ERR:editstr(s,f));}
+    inline int mvweditstr(WINDOW* w, int y, int x, char* s, int f)  {return (wmove(w,y,x)==ERR?ERR:weditstr(w,s,f));}
+
+    inline WINDOW* inputbox(int l, int c)          {return winputbox(stdscr,l,c);}
+    inline WINDOW* mvinputbox(int y, int x, int l, int c)    {return (move(y,x)==ERR?w:inputbox(l,c));}
+    inline WINDOW* mvwinputbox(WINDOW* w, int y, int x, int l, int c) {return (wmove(w,y,x)==ERR?w:winputbox(w,l,c));}
+  }
+}
+
+#endif // AEIRC_TUI_HPP_INCLUDED
