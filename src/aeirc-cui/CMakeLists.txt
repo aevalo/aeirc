@@ -16,7 +16,7 @@ endif(WIN32 AND NOT CYGWIN)
 
 if(PDCURSES_FOUND)
   set(CUILIB_INCLUDE_DIRS ${PDCURSES_INCLUDE_DIR})
-  set(CUILIB_LIBRARIES ${PDCURSES_LIBRARY})
+  set(CUILIB_LIBRARIES ${PDCURSES_LIBRARIES})
 elseif(CURSES_FOUND)
   set(CUILIB_INCLUDE_DIRS ${CURSES_INCLUDE_DIRS})
   set(CUILIB_LIBRARIES ${CURSES_LIBRARIES})
@@ -26,10 +26,10 @@ endif(PDCURSES_FOUND)
 
 include_directories(${CUILIB_INCLUDE_DIRS})
 
-set(aeirc-cui_HEADERS tui.hpp)
-set(aeirc-cui_SOURCES main.cpp tui.cpp)
+set(aeirc-cui_HEADERS "")
+set(aeirc-cui_SOURCES main.cpp)
 
-add_executable(aeirc-cui ${aeirc-cui_HEADERS} ${aeirc-cui_SOURCES})
+add_executable(aeirc-cui ${aeirc-cui_SOURCES})
 target_link_libraries(aeirc-cui ${CUILIB_LIBRARIES})
 
 set_target_properties(aeirc-cui PROPERTIES VERSION ${AEIRC-CUI_VERSION})

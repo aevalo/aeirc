@@ -15,6 +15,7 @@
 #include <unistd.h>
 #endif
 #include "tui.hpp"
+#include "tui_internal.hpp"
 
 
 namespace aeirc
@@ -24,331 +25,6 @@ namespace aeirc
     void statusmsg(char*);
     int waitforkey();
     void rmerror();
-    #ifdef A_COLOR
-    # define TITLECOLOR       1       /* color pair indices */
-    # define MAINMENUCOLOR    (2 | A_BOLD)
-    # define MAINMENUREVCOLOR (3 | A_BOLD | A_REVERSE)
-    # define SUBMENUCOLOR     (4 | A_BOLD)
-    # define SUBMENUREVCOLOR  (5 | A_BOLD | A_REVERSE)
-    # define BODYCOLOR        6
-    # define STATUSCOLOR      (7 | A_BOLD)
-    # define INPUTBOXCOLOR    8
-    # define EDITBOXCOLOR     (9 | A_BOLD | A_REVERSE)
-    #else
-    # define TITLECOLOR       0       /* color pair indices */
-    # define MAINMENUCOLOR    (A_BOLD)
-    # define MAINMENUREVCOLOR (A_BOLD | A_REVERSE)
-    # define SUBMENUCOLOR     (A_BOLD)
-    # define SUBMENUREVCOLOR  (A_BOLD | A_REVERSE)
-    # define BODYCOLOR        0
-    # define STATUSCOLOR      (A_BOLD)
-    # define INPUTBOXCOLOR    0
-    # define EDITBOXCOLOR     (A_BOLD | A_REVERSE)
-    #endif
-
-    #define th 1     /* title window height */
-    #define mh 1     /* main menu height */
-    #define sh 2     /* status window height */
-    #define bh (LINES - th - mh - sh)   /* body window height */
-    #define bw COLS  /* body window width */
-
-    //******************************* STATIC ************************************
-
-    static WINDOW *wtitl, *wmain, *wbody, *wstat; // title, menu, body, status win
-    static int nexty, nextx;
-    static int key = ERR, ch = ERR;
-    static bool quit = FALSE;
-    static bool incurses = FALSE;
-
-#ifndef PDCURSES
-    static char wordchar()
-    {
-      return 0x17;    // ^W
-    }
-#endif
-
-    static char* padstr(char* s, int length)
-    {
-      static char buf[MAXSTRLEN];
-      char fmt[10];
-      sprintf(fmt, (int)strlen(s) > length ? "%%.%ds" : "%%-%ds", length);
-      sprintf(buf, fmt, s);
-      return buf;
-    }
-
-    static char* prepad(char* s, int length)
-    {
-      int i;
-      char* p = s;
-      if (length > 0)
-      {
-        memmove((void *)(s + length), (const void *)s, strlen(s) + 1);
-        for (i = 0; i < length; i++)
-          *p++ = ' ';
-      }
-      return s;
-    }
-
-    static void rmline(WINDOW* win, int nr)   // keeps box lines intact
-    {
-      mvwaddstr(win, nr, 1, padstr(" ", bw - 2));
-      wrefresh(win);
-    }
-
-    static void initcolor()
-    {
-#ifdef A_COLOR
-      if (has_colors())
-        start_color();
-
-      // foreground, background
-      init_pair(TITLECOLOR       & ~A_ATTR, COLOR_BLACK, COLOR_CYAN);
-      init_pair(MAINMENUCOLOR    & ~A_ATTR, COLOR_WHITE, COLOR_CYAN);
-      init_pair(MAINMENUREVCOLOR & ~A_ATTR, COLOR_WHITE, COLOR_BLACK);
-      init_pair(SUBMENUCOLOR     & ~A_ATTR, COLOR_WHITE, COLOR_CYAN);
-      init_pair(SUBMENUREVCOLOR  & ~A_ATTR, COLOR_WHITE, COLOR_BLACK);
-      init_pair(BODYCOLOR        & ~A_ATTR, COLOR_WHITE, COLOR_BLUE);
-      init_pair(STATUSCOLOR      & ~A_ATTR, COLOR_WHITE, COLOR_CYAN);
-      init_pair(INPUTBOXCOLOR    & ~A_ATTR, COLOR_BLACK, COLOR_CYAN);
-      init_pair(EDITBOXCOLOR     & ~A_ATTR, COLOR_WHITE, COLOR_BLACK);
-#endif
-    }
-
-    static void setcolor(WINDOW* win, chtype color)
-    {
-      chtype attr = color & A_ATTR;  // extract Bold, Reverse, Blink bits
-
-#ifdef A_COLOR
-      attr &= ~A_REVERSE;  // ignore reverse, use colors instead!
-      wattrset(win, COLOR_PAIR(color & A_CHARTEXT) | attr);
-#else
-      attr &= ~A_BOLD;     // ignore bold, gives messy display on HP-UX
-      wattrset(win, attr);
-#endif
-    }
-
-    static void colorbox(WINDOW* win, chtype color, int hasbox)
-    {
-      int maxy;
-#ifndef PDCURSES
-      int maxx;
-#endif
-      chtype attr = color & A_ATTR;  // extract Bold, Reverse, Blink bits
-
-      setcolor(win, color);
-
-#ifdef A_COLOR
-      if (has_colors())
-        wbkgd(win, COLOR_PAIR(color & A_CHARTEXT) | (attr & ~A_REVERSE));
-      else
-#endif
-        wbkgd(win, attr);
-
-      werase(win);
-
-#ifdef PDCURSES
-      maxy = getmaxy(win);
-#else
-      getmaxyx(win, maxy, maxx);
-#endif
-      if (hasbox && (maxy > 2))
-        box(win, 0, 0);
-
-      touchwin(win);
-      wrefresh(win);
-    }
-
-    static void idle()
-    {
-      char buf[MAXSTRLEN];
-      time_t t;
-      struct tm* tp;
-
-      if (time (&t) == -1)
-        return;  // time not available
-
-      tp = localtime(&t);
-      sprintf(buf, " %.2d-%.2d-%.4d  %.2d:%.2d:%.2d",
-              tp->tm_mday, tp->tm_mon + 1, tp->tm_year + 1900,
-              tp->tm_hour, tp->tm_min, tp->tm_sec);
-
-      mvwaddstr(wtitl, 0, bw - strlen(buf) - 2, buf);
-      wrefresh(wtitl);
-    }
-
-    static void menudim(menu* mp, int* lines, int* columns)
-    {
-      int n, l, mmax = 0;
-
-      for (n=0; mp->func; n++, mp++)
-        if ((l = strlen(mp->name)) > mmax) mmax = l;
-
-      *lines = n;
-      *columns = mmax + 2;
-    }
-
-    static void setmenupos(int y, int x)
-    {
-      nexty = y;
-      nextx = x;
-    }
-
-    static void getmenupos(int* y, int* x)
-    {
-      *y = nexty;
-      *x = nextx;
-    }
-
-    static int hotkey(const char* s)
-    {
-      int c0 = *s;    // if no upper case found, return first char
-
-      for (; *s; s++)
-        if (isupper((unsigned char)*s))
-          break;
-
-      return *s ? *s : c0;
-    }
-
-    static void repaintmenu(WINDOW* wmenu, menu* mp)
-    {
-      int i;
-      menu* p = mp;
-
-      for (i = 0; p->func; i++, p++)
-        mvwaddstr(wmenu, i + 1, 2, p->name);
-
-      touchwin(wmenu);
-      wrefresh(wmenu);
-    }
-
-    static void repaintmainmenu(int width, menu* mp)
-    {
-      int i;
-      menu* p = mp;
-
-      for (i = 0; p->func; i++, p++)
-        mvwaddstr(wmain, 0, i * width, prepad(padstr(p->name, width - 1), 1));
-
-      touchwin(wmain);
-      wrefresh(wmain);
-    }
-
-    static void mainhelp()
-    {
-#ifdef ALT_X
-      statusmsg("Use arrow keys and Enter to select (Alt-X to quit)");
-#else
-      statusmsg("Use arrow keys and Enter to select");
-#endif
-    }
-
-    static void mainmenu(menu* mp)
-    {
-      int nitems, barlen, old = -1, cur = 0, c, cur0;
-
-      menudim(mp, &nitems, &barlen);
-      repaintmainmenu(barlen, mp);
-
-      while (!quit)
-      {
-        if (cur != old)
-        {
-          if (old != -1)
-          {
-            mvwaddstr(wmain, 0, old * barlen, prepad(padstr(mp[old].name, barlen - 1), 1));
-            statusmsg(mp[cur].desc);
-          }
-          else
-            mainhelp();
-
-          setcolor(wmain, MAINMENUREVCOLOR);
-
-          mvwaddstr(wmain, 0, cur * barlen, prepad(padstr(mp[cur].name, barlen - 1), 1));
-
-          setcolor(wmain, MAINMENUCOLOR);
-          old = cur;
-          wrefresh(wmain);
-        }
-
-        switch (c = (key != ERR ? key : waitforkey()))
-        {
-          case KEY_DOWN:
-          case '\n':              // menu item selected
-            touchwin(wbody);
-            wrefresh(wbody);
-            rmerror();
-            setmenupos(th + mh, cur * barlen);
-            curs_set(1);
-            (mp[cur].func)();   // perform function
-            curs_set(0);
-
-            switch (key)
-            {
-              case KEY_LEFT:
-                cur = (cur + nitems - 1) % nitems;
-                key = '\n';
-                break;
-
-              case KEY_RIGHT:
-                cur = (cur + 1) % nitems;
-                key = '\n';
-                break;
-
-              default:
-                key = ERR;
-            }
-
-            repaintmainmenu(barlen, mp);
-            old = -1;
-            break;
-
-          case KEY_LEFT:
-            cur = (cur + nitems - 1) % nitems;
-            break;
-
-          case KEY_RIGHT:
-            cur = (cur + 1) % nitems;
-            break;
-
-          case KEY_ESC:
-            mainhelp();
-            break;
-
-          default:
-            cur0 = cur;
-
-            do
-            {
-              cur = (cur + 1) % nitems;
-            } while ((cur != cur0) && (hotkey(mp[cur].name) != toupper(c)));
-
-            if (hotkey(mp[cur].name) == toupper(c))
-              key = '\n';
-        }
-      }
-
-      rmerror();
-      touchwin(wbody);
-      wrefresh(wbody);
-    }
-
-    static void cleanup()   // cleanup curses settings
-    {
-      if (incurses)
-      {
-        delwin(wtitl);
-        delwin(wmain);
-        delwin(wbody);
-        delwin(wstat);
-        curs_set(1);
-        endwin();
-        incurses = FALSE;
-      }
-    }
-
-
-    // ******************************* EXTERNAL **********************************
 
     void clsbody()
     {
@@ -374,17 +50,17 @@ namespace aeirc
 
     void rmerror()
     {
-      rmline(wstat, 0);
+      internal::rmline(wstat, 0);
     }
 
     void rmstatus()
     {
-      rmline(wstat, 1);
+      internal::rmline(wstat, 1);
     }
 
     void titlemsg(char* msg)
     {
-      mvwaddstr(wtitl, 0, 2, padstr(msg, bw - 3));
+      mvwaddstr(wtitl, 0, 2, internal::padstr(msg, bw - 3));
       wrefresh(wtitl);
     }
 
@@ -397,13 +73,13 @@ namespace aeirc
     void errormsg(char* msg)
     {
       beep();
-      mvwaddstr(wstat, 0, 2, padstr(msg, bw - 3));
+      mvwaddstr(wstat, 0, 2, internal::padstr(msg, bw - 3));
       wrefresh(wstat);
     }
 
     void statusmsg(char* msg)
     {
-      mvwaddstr(wstat, 1, 2, padstr(msg, bw - 3));
+      mvwaddstr(wstat, 1, 2, internal::padstr(msg, bw - 3));
       wrefresh(wstat);
     }
 
@@ -425,7 +101,7 @@ namespace aeirc
 
     int waitforkey()
     {
-      do idle(); while (!keypressed());
+      do internal::idle(); while (!keypressed());
       return getkey();
     }
 
@@ -441,13 +117,13 @@ namespace aeirc
       WINDOW* wmenu;
 
       curs_set(0);
-      getmenupos(&y, &x);
-      menudim(mp, &nitems, &barlen);
+      internal::getmenupos(&y, &x);
+      internal::menudim(mp, &nitems, &barlen);
       mheight = nitems + 2;
       mw = barlen + 2;
       wmenu = newwin(mheight, mw, y, x);
-      colorbox(wmenu, SUBMENUCOLOR, 1);
-      repaintmenu(wmenu, mp);
+      internal::colorbox(wmenu, SUBMENUCOLOR, 1);
+      internal::repaintmenu(wmenu, mp);
 
       key = ERR;
       while (!stop && !quit)
@@ -455,12 +131,12 @@ namespace aeirc
         if (cur != old)
         {
           if (old != -1)
-            mvwaddstr(wmenu, old + 1, 1, prepad(padstr(mp[old].name, barlen - 1), 1));
+            mvwaddstr(wmenu, old + 1, 1, internal::prepad(internal::padstr(mp[old].name, barlen - 1), 1));
 
-          setcolor(wmenu, SUBMENUREVCOLOR);
-          mvwaddstr(wmenu, cur + 1, 1, prepad(padstr(mp[cur].name, barlen - 1), 1));
+          internal::setcolor(wmenu, SUBMENUREVCOLOR);
+          mvwaddstr(wmenu, cur + 1, 1, internal::prepad(internal::padstr(mp[cur].name, barlen - 1), 1));
 
-          setcolor(wmenu, SUBMENUCOLOR);
+          internal::setcolor(wmenu, SUBMENUCOLOR);
           statusmsg(mp[cur].desc);
 
           old = cur;
@@ -472,7 +148,7 @@ namespace aeirc
           case '\n':          // menu item selected
             touchwin(wbody);
             wrefresh(wbody);
-            setmenupos(y + 1, x + 1);
+            internal::setmenupos(y + 1, x + 1);
             rmerror();
 
             key = ERR;
@@ -480,7 +156,7 @@ namespace aeirc
             (mp[cur].func)();   // perform function
             curs_set(0);
 
-            repaintmenu(wmenu, mp);
+            internal::repaintmenu(wmenu, mp);
 
             old = -1;
             break;
@@ -509,8 +185,8 @@ namespace aeirc
             do
             {
               cur = (cur + 1) % nitems;
-            } while ((cur != cur0) && (hotkey(mp[cur].name) != toupper((int)key)));
-            key = (hotkey(mp[cur].name) == toupper((int)key)) ? '\n' : ERR;
+            } while ((cur != cur0) && (internal::hotkey(mp[cur].name) != toupper((int)key)));
+            key = (internal::hotkey(mp[cur].name) == toupper((int)key)) ? '\n' : ERR;
         }
       }
 
@@ -524,17 +200,17 @@ namespace aeirc
     {
       initscr();
       incurses = TRUE;
-      initcolor();
+      internal::initcolor();
 
       wtitl = subwin(stdscr, th, bw, 0, 0);
       wmain = subwin(stdscr, mh, bw, th, 0);
       wbody = subwin(stdscr, bh, bw, th + mh, 0);
       wstat = subwin(stdscr, sh, bw, th + mh + bh, 0);
 
-      colorbox(wtitl, TITLECOLOR, 0);
-      colorbox(wmain, MAINMENUCOLOR, 0);
-      colorbox(wbody, BODYCOLOR, 0);
-      colorbox(wstat, STATUSCOLOR, 0);
+      internal::colorbox(wtitl, TITLECOLOR, 0);
+      internal::colorbox(wmain, MAINMENUCOLOR, 0);
+      internal::colorbox(wbody, BODYCOLOR, 0);
+      internal::colorbox(wstat, STATUSCOLOR, 0);
 
       if (mtitle)
         titlemsg(mtitle);
@@ -552,9 +228,9 @@ namespace aeirc
       leaveok(wmain, TRUE);
       leaveok(wstat, TRUE);
 
-      mainmenu(mp);
+      internal::mainmenu(mp);
 
-      cleanup();
+      internal::cleanup();
     }
 
     static void repainteditbox(WINDOW* win, int x, char* buf)
@@ -570,7 +246,7 @@ namespace aeirc
       getmaxyx(win, maxy, maxx);
 #endif
       werase(win);
-      mvwprintw(win, 0, 0, "%s", padstr(buf, maxx));
+      mvwprintw(win, 0, 0, "%s", internal::padstr(buf, maxx));
       wmove(win, 0, x);
       wrefresh(win);
     }
@@ -615,14 +291,14 @@ namespace aeirc
 
       wedit = subwin(win, 1, field, begy + cury, begx + curx);
       oldattr = wedit->_attrs;
-      colorbox(wedit, EDITBOXCOLOR, 0);
+      internal::colorbox(wedit, EDITBOXCOLOR, 0);
 
       keypad(wedit, TRUE);
       curs_set(1);
 
       while (!stop)
       {
-        idle();
+        internal::idle();
         repainteditbox(wedit, bp - buf, buf);
 
         switch (c = wgetch(wedit))
@@ -729,7 +405,7 @@ namespace aeirc
       getbegyx(win, begy, begx);
 
       winp = newwin(nlines, ncols, begy + cury, begx + curx);
-      colorbox(winp, INPUTBOXCOLOR, 1);
+      internal::colorbox(winp, INPUTBOXCOLOR, 1);
 
       return winp;
     }
