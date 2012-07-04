@@ -6,6 +6,7 @@
 
 
 #include <ctype.h>
+#define PDC_DLL_BUILD
 #include <curses.h>
 #include <stdio.h>
 #include <stdlib.h>

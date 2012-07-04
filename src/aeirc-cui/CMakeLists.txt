@@ -26,8 +26,8 @@ endif(PDCURSES_FOUND)
 
 include_directories(${CUILIB_INCLUDE_DIRS})
 
-set(aeirc-cui_HEADERS "")
-set(aeirc-cui_SOURCES main.cpp)
+set(aeirc-cui_HEADERS tui.hpp tui_internal.hpp tui_types.hpp)
+set(aeirc-cui_SOURCES tui.cpp tui_internal.cpp tui_types.cpp main.cpp)
 
 add_executable(aeirc-cui ${aeirc-cui_SOURCES})
 target_link_libraries(aeirc-cui ${CUILIB_LIBRARIES})

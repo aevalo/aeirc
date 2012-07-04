@@ -17,8 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <locale.h>
-#include "tui.hpp"
-using namespace aeirc::tui;
+#include "tui.h"
 
 /* change this if source at other location */
 
@@ -32,7 +31,7 @@ using namespace aeirc::tui;
 
 void address(void)
 {
-    char *fieldname[6] =
+    char *fieldname[6] = 
     {
         "Name", "Street", "City", "State", "Country", (char *)0
     };
@@ -42,7 +41,7 @@ void address(void)
     int i, field = 50;
 
     for (i = 0; i < 5; i++)
-        fieldbuf[i] = (char*)calloc(1, field + 1);
+        fieldbuf[i] = calloc(1, field + 1);
 
     if (getstrings(fieldname, fieldbuf, field) != KEY_ESC)
     {
@@ -75,7 +74,7 @@ char *getfname(char *desc, char *fname, int field)
 
 void showfile(char *fname)
 {
-    int i, bhh = bodylen();
+    int i, bh = bodylen();
     FILE *fp;
     char buf[MAXSTRLEN];
     bool ateof = FALSE;
@@ -88,7 +87,7 @@ void showfile(char *fname)
         {
             clsbody();
 
-            for (i = 0; i < bhh - 1 && !ateof; i++)
+            for (i = 0; i < bh - 1 && !ateof; i++)
             {
                 buf[0] = '\0';
                 fgets(buf, MAXSTRLEN, fp);

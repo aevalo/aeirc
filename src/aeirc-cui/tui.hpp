@@ -9,6 +9,7 @@
 #ifndef AEIRC_TUI_HPP_INCLUDED
 #define AEIRC_TUI_HPP_INCLUDED
 
+#define PDC_DLL_BUILD
 #include <curses.h>
 #include "tui_types.hpp"
 
