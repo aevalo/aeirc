@@ -351,7 +351,7 @@ namespace aeirc
               bp = buf;
               *bp = '\0';
             }
-            else if (c == wordchar())   // ^W
+            else if (c == internal::wordchar())   // ^W
             {
               tp = bp;
               while ((bp > buf) && (*(bp - 1) == ' '))
