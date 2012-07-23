@@ -4,8 +4,12 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 include(EnsureOutOfSourceBuild)
+include(GettextHelpers)
 
 EnsureOutOfSourceBuild("Out-of-source build required.")
+
+find_package(Gettext REQUIRED)
+find_package(LibIntl REQUIRED)
 
 add_subdirectory(src/libaeirc)
 add_subdirectory(src/aeirc-gui)
