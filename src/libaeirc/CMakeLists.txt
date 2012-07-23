@@ -22,8 +22,9 @@ if(WIN32)
 endif(WIN32)
 
 add_library(libaeirc SHARED ${aeirc-common_HEADERS} ${aeirc-common_SOURCES})
-
 set_target_properties(libaeirc PROPERTIES PREFIX "" VERSION ${LIBAEIRC_VERSION} SOVERSION ${LIBAEIRC_VERSION})
+
+create_translantion_targets(${PROJECT_SOURCE_DIR}/src/hellogt.cpp fi en)
 
 install(TARGETS libaeirc
         RUNTIME DESTINATION bin
